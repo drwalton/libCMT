@@ -91,6 +91,7 @@ cv::Point2f rotate(cv::Point2f p, float rad)
 }
 
 CMT::CMT()
+    :maxTrackedKeypoints(250)
 {
     detectorType = "Feature2D.BRISK";
     descriptorType = "Feature2D.BRISK";
@@ -122,6 +123,12 @@ void CMT::initialise(cv::Mat im_gray0, cv::Point2f topleft, cv::Point2f bottomri
     std::vector<cv::KeyPoint> selected_keypoints;
     std::vector<cv::KeyPoint> background_keypoints;
     inout_rect(keypoints, topleft, bottomright, selected_keypoints, background_keypoints);
+
+    std::cout << "Initialising CMT Tracker: "
+              << selected_keypoints.size() << " object keypoints, "
+              << background_keypoints.size() << " background keypoints."
+              << std::endl;
+
     descriptorExtractor->compute(im_gray0, selected_keypoints, selectedFeatures);
 
     if(selected_keypoints.size() == 0)
@@ -507,9 +514,15 @@ void CMT::processFrame(cv::Mat im_gray)
 
     //Detect keypoints, compute descriptors
     std::vector<cv::KeyPoint> keypoints;
+
     cv::Mat features;
     detector->detect(im_gray, keypoints);
     descriptorExtractor->compute(im_gray, keypoints, features);
+
+    if(keypoints.size() > maxTrackedKeypoints) {
+        keypoints = std::vector<cv::KeyPoint>(
+                    keypoints.begin(), keypoints.begin() + maxTrackedKeypoints);
+    }
 
     //Create list of active keypoints
     activeKeypoints = std::vector<std::pair<cv::KeyPoint, int> >();
