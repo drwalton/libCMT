@@ -12,3 +12,4 @@ target_link_libraries(CMT
     libCMT
     ${OpenCV_LIBRARIES}
 )
+

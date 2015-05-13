@@ -126,22 +126,22 @@ void CMT::initialise(cv::Mat im_gray0, cv::Point2f topleft, cv::Point2f bottomri
     std::vector<cv::KeyPoint> background_keypoints;
     inout_rect(keypoints, topleft, bottomright, selected_keypoints, background_keypoints);
 
-    std::cout << "Initialising CMT Tracker: "
-              << selected_keypoints.size() << " object keypoints, "
-              << background_keypoints.size() << " background keypoints."
-              << std::endl;
-
-    if(selected_keypoints.size() > maxObjectKeypoints) {
+    if(maxObjectKeypoints != 0 && selected_keypoints.size() > maxObjectKeypoints) {
         selected_keypoints = std::vector<cv::KeyPoint>(
                     selected_keypoints.begin(),
                     selected_keypoints.begin() + maxObjectKeypoints);
     }
 
-    if(background_keypoints.size() > maxBackgroundKeypoints) {
+    if(maxBackgroundKeypoints != 0 && background_keypoints.size() > maxBackgroundKeypoints) {
         background_keypoints = std::vector<cv::KeyPoint>(
                     background_keypoints.begin(),
                     background_keypoints.begin() + maxBackgroundKeypoints);
     }
+
+    std::cout << "Initialising CMT Tracker: "
+              << selected_keypoints.size() << " object keypoints, "
+              << background_keypoints.size() << " background keypoints."
+              << std::endl;
 
     descriptorExtractor->compute(im_gray0, selected_keypoints, selectedFeatures);
 
@@ -533,7 +533,7 @@ void CMT::processFrame(cv::Mat im_gray)
     detector->detect(im_gray, keypoints);
     descriptorExtractor->compute(im_gray, keypoints, features);
 
-    if(keypoints.size() > maxTrackedKeypoints) {
+    if(maxTrackedKeypoints != 0 && keypoints.size() > maxTrackedKeypoints) {
         //std::random_device rd;
         //std::mt19937 g(rd());
         //std::shuffle(keypoints.begin(), keypoints.end(), g);
