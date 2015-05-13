@@ -95,8 +95,8 @@ CMT::CMT()
      maxObjectKeypoints(100),
      maxBackgroundKeypoints(250)
 {
-    detectorType = "Feature2D.BRISK";
-    descriptorType = "Feature2D.BRISK";
+    detectorType = "Feature2D.ORB";
+    descriptorType = "Feature2D.ORB";
     matcherType = "BruteForce-Hamming";
     thrOutlier = 20;
     thrConf = 0.75;
