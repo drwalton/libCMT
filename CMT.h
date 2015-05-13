@@ -64,6 +64,8 @@ public:
     void processFrame(cv::Mat im_gray);
 
     size_t maxTrackedKeypoints;
+    size_t maxObjectKeypoints;
+    size_t maxBackgroundKeypoints;
 };
 
 class Cluster

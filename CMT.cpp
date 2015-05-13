@@ -91,7 +91,9 @@ cv::Point2f rotate(cv::Point2f p, float rad)
 }
 
 CMT::CMT()
-    :maxTrackedKeypoints(250)
+    :maxTrackedKeypoints(250),
+     maxObjectKeypoints(100),
+     maxBackgroundKeypoints(250)
 {
     detectorType = "Feature2D.BRISK";
     descriptorType = "Feature2D.BRISK";
@@ -128,6 +130,18 @@ void CMT::initialise(cv::Mat im_gray0, cv::Point2f topleft, cv::Point2f bottomri
               << selected_keypoints.size() << " object keypoints, "
               << background_keypoints.size() << " background keypoints."
               << std::endl;
+
+    if(selected_keypoints.size() > maxObjectKeypoints) {
+        selected_keypoints = std::vector<cv::KeyPoint>(
+                    selected_keypoints.begin(),
+                    selected_keypoints.begin() + maxObjectKeypoints);
+    }
+
+    if(background_keypoints.size() > maxBackgroundKeypoints) {
+        background_keypoints = std::vector<cv::KeyPoint>(
+                    background_keypoints.begin(),
+                    background_keypoints.begin() + maxBackgroundKeypoints);
+    }
 
     descriptorExtractor->compute(im_gray0, selected_keypoints, selectedFeatures);
 
@@ -520,6 +534,9 @@ void CMT::processFrame(cv::Mat im_gray)
     descriptorExtractor->compute(im_gray, keypoints, features);
 
     if(keypoints.size() > maxTrackedKeypoints) {
+        //std::random_device rd;
+        //std::mt19937 g(rd());
+        //std::shuffle(keypoints.begin(), keypoints.end(), g);
         keypoints = std::vector<cv::KeyPoint>(
                     keypoints.begin(), keypoints.begin() + maxTrackedKeypoints);
     }
