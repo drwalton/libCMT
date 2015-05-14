@@ -99,11 +99,11 @@ cv::Point2f rotate(cv::Point2f p, float rad)
 
 CMT::CMT()
     :maxTrackedKeypoints(250),
-     maxObjectKeypoints(100),
-     maxBackgroundKeypoints(250)
+    maxObjectKeypoints(250),
+    maxBackgroundKeypoints(250)
 {
-    detectorType = "Feature2D.ORB";
-    descriptorType = "Feature2D.ORB";
+    detectorType = "Feature2D.BRISK";
+    descriptorType = "Feature2D.BRISK";
     matcherType = "BruteForce-Hamming";
     thrOutlier = 20;
     thrConf = 0.75;
