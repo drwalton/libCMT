@@ -132,14 +132,14 @@ void CMT::initialise(cv::Mat im_gray0, cv::Point2f topleft, cv::Point2f bottomri
     inout_rect(keypoints, topleft, bottomright, selected_keypoints, background_keypoints);
 
     if(maxObjectKeypoints != 0 && selected_keypoints.size() > maxObjectKeypoints) {
-//         sort_keypoints(selected_keypoints);
+        sort_keypoints(selected_keypoints);
         selected_keypoints = std::vector<cv::KeyPoint>(
                     selected_keypoints.begin(),
                     selected_keypoints.begin() + maxObjectKeypoints);
     }
 
     if(maxBackgroundKeypoints != 0 && background_keypoints.size() > maxBackgroundKeypoints) {
-//         sort_keypoints(background_keypoints);
+        sort_keypoints(background_keypoints);
         background_keypoints = std::vector<cv::KeyPoint>(
                     background_keypoints.begin(),
                     background_keypoints.begin() + maxBackgroundKeypoints);
