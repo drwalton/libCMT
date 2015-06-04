@@ -22,10 +22,8 @@
 #endif
 
 void sort_keypoints(std::vector<cv::KeyPoint> & vec) {
-    std::sort(vec.begin(), vec.end(),
-        [](cv::KeyPoint kp1, cv::KeyPoint kp2) -> bool {
-        return kp1.response > kp2.response;
-    });
+    std::shuffle(vec.begin(), vec.end(),
+                 std::default_random_engine(1));
 }
 
 void inout_rect(const std::vector<cv::KeyPoint>& keypoints, cv::Point2f topleft, cv::Point2f bottomright, std::vector<cv::KeyPoint>& in, std::vector<cv::KeyPoint>& out)
