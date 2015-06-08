@@ -133,9 +133,9 @@ Mat pred(const Mat img)
     cv::Mat m[3] = {Mat(), Mat(), Mat()};
     cv::split(prob_mat_3, m);
     prob_mat = (m[0].mul(m[1])).mul(m[2]);
-    imshow("BLAH", prob_mat);
+    //imshow("BLAH", prob_mat);
     //std::cout << prob_mat.size() << endl;
-    waitKey(30);
+    //waitKey(30);
     return prob_mat;
 }
 
@@ -149,6 +149,22 @@ void get_N_hottest_keypoints(
     std::sort(keypoints.begin(), keypoints.end(),
         [&heat_map](const cv::KeyPoint &left, const cv::KeyPoint &right) {
             return heat_map.at<float>(int(left.pt.y), int(left.pt.x)) >
+                    heat_map.at<float>(int(right.pt.y), int(right.pt.x));
+    });
+
+    keypoints.erase(keypoints.begin() + N, keypoints.end());
+}
+
+void get_N_coolest_keypoints(
+        std::vector<cv::KeyPoint> &keypoints, size_t N, cv::Mat heat_map)
+{
+    if(keypoints.size() <= N) {
+        return;
+    }
+
+    std::sort(keypoints.begin(), keypoints.end(),
+        [&heat_map](const cv::KeyPoint &left, const cv::KeyPoint &right) {
+            return heat_map.at<float>(int(left.pt.y), int(left.pt.x)) <
                     heat_map.at<float>(int(right.pt.y), int(right.pt.x));
     });
 
@@ -270,7 +286,7 @@ void CMT::initialise(cv::Mat im0, cv::Rect target_bb)
     cv::Mat heat_map = pred(im0);
 
     get_N_hottest_keypoints(selected_keypoints, maxObjectKeypoints, heat_map);
-    get_N_hottest_keypoints(background_keypoints, maxBackgroundKeypoints, heat_map);
+    get_N_coolest_keypoints(background_keypoints, maxBackgroundKeypoints, heat_map);
 
     std::cout << "Initialising CMT Tracker: "
               << selected_keypoints.size() << " object keypoints, "
