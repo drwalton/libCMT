@@ -143,10 +143,17 @@ void get_N_hottest_keypoints(
         return;
     }
 
+#pragma omp parallel for
+    for(size_t i = 0 ; i < keypoints.size(); ++i) {
+        keypoints[i].response =
+                heat_map.at<float>(
+                    int(keypoints[i].pt.y),
+                    int(keypoints[i].pt.x));
+    }
+
     std::sort(keypoints.begin(), keypoints.end(),
         [&heat_map](const cv::KeyPoint &left, const cv::KeyPoint &right) {
-            return heat_map.at<float>(int(left.pt.y), int(left.pt.x)) >
-                    heat_map.at<float>(int(right.pt.y), int(right.pt.x));
+            return left.response > right.response;
     });
 
     keypoints.erase(keypoints.begin() + N, keypoints.end());
@@ -159,10 +166,17 @@ void get_N_coolest_keypoints(
         return;
     }
 
+#pragma omp parallel for
+    for(size_t i = 0 ; i < keypoints.size(); ++i) {
+        keypoints[i].response =
+                heat_map.at<float>(
+                    int(keypoints[i].pt.y),
+                    int(keypoints[i].pt.x));
+    }
+
     std::sort(keypoints.begin(), keypoints.end(),
         [&heat_map](const cv::KeyPoint &left, const cv::KeyPoint &right) {
-            return heat_map.at<float>(int(left.pt.y), int(left.pt.x)) <
-                    heat_map.at<float>(int(right.pt.y), int(right.pt.x));
+            return left.response < right.response;
     });
 
     keypoints.erase(keypoints.begin() + N, keypoints.end());
