@@ -143,20 +143,29 @@ void get_N_hottest_keypoints(
         return;
     }
 
+    std::vector<std::pair<cv::KeyPoint, float> > kpts(keypoints.size());
+
 #pragma omp parallel for
     for(size_t i = 0 ; i < keypoints.size(); ++i) {
-        keypoints[i].response =
+        kpts[i].first = keypoints[i];
+        kpts[i].second =
                 heat_map.at<float>(
                     int(keypoints[i].pt.y),
                     int(keypoints[i].pt.x));
     }
 
-    std::sort(keypoints.begin(), keypoints.end(),
-        [&heat_map](const cv::KeyPoint &left, const cv::KeyPoint &right) {
-            return left.response > right.response;
+    std::sort(kpts.begin(), kpts.end(),
+        [&heat_map](const std::pair<cv::KeyPoint, float> &left, const std::pair<cv::KeyPoint, float> &right) {
+            return left.second > right.second;
     });
 
     keypoints.erase(keypoints.begin() + N, keypoints.end());
+
+#pragma omp parallel for
+    for(size_t i = 0; i < N; ++i)
+    {
+        keypoints[i] = kpts[i].first;
+    }
 }
 
 void get_N_coolest_keypoints(
@@ -166,20 +175,29 @@ void get_N_coolest_keypoints(
         return;
     }
 
+    std::vector<std::pair<cv::KeyPoint, float> > kpts(keypoints.size());
+
 #pragma omp parallel for
     for(size_t i = 0 ; i < keypoints.size(); ++i) {
-        keypoints[i].response =
+        kpts[i].first = keypoints[i];
+        kpts[i].second =
                 heat_map.at<float>(
                     int(keypoints[i].pt.y),
                     int(keypoints[i].pt.x));
     }
 
-    std::sort(keypoints.begin(), keypoints.end(),
-        [&heat_map](const cv::KeyPoint &left, const cv::KeyPoint &right) {
-            return left.response < right.response;
+    std::sort(kpts.begin(), kpts.end(),
+        [&heat_map](const std::pair<cv::KeyPoint, float> &left, const std::pair<cv::KeyPoint, float> &right) {
+            return left.second < right.second;
     });
 
     keypoints.erase(keypoints.begin() + N, keypoints.end());
+
+#pragma omp parallel for
+    for(size_t i = 0; i < N; ++i)
+    {
+        keypoints[i] = kpts[i].first;
+    }
 }
 
 void inout_rect(const std::vector<cv::KeyPoint>& keypoints, cv::Point2f topleft, cv::Point2f bottomright, std::vector<cv::KeyPoint>& in, std::vector<cv::KeyPoint>& out)
