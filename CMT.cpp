@@ -96,9 +96,9 @@ cv::Point2f rotate(cv::Point2f p, float rad)
 }
 
 CMT::CMT()
-    :maxTrackedKeypoints(300),
-    maxObjectKeypoints(300),
-    maxBackgroundKeypoints(300)
+    :maxTrackedKeypoints(500),
+    maxObjectKeypoints(500),
+    maxBackgroundKeypoints(500)
 {
     detectorType = "Feature2D.BRISK";
     descriptorType = "Feature2D.BRISK";
