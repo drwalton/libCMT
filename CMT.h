@@ -66,6 +66,23 @@ public:
     size_t maxTrackedKeypoints;
     size_t maxObjectKeypoints;
     size_t maxBackgroundKeypoints;
+
+private:
+    /* variables */
+    float prob_table[256][256][256];
+    cv::Mat in_mean;
+    cv::Mat in_std;
+    cv::Mat out_mean;
+    cv::Mat out_std;
+
+    /* functions */
+    void pred_train(const cv::Mat img, const cv::Rect bb);
+    cv::Mat pred(const cv::Mat img);
+    void prob_gen_loop();
+
+
+
+
 };
 
 class Cluster

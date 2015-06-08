@@ -25,11 +25,6 @@
 using namespace cv;
 using namespace std;
 
-static Mat in_mean;
-static Mat in_std;
-static Mat out_mean;
-static Mat out_std;
-
 Mat pred_normcdf(Mat x)
 {
     // constants
@@ -57,6 +52,61 @@ Mat pred_normcdf(Mat x)
     return 0.5f*(1.0f + sign.mul(y));
 }
 
+float prob_normcdf(float x)
+{
+    // constants
+    float a1 =  0.254829592;
+    float a2 = -0.284496736;
+    float a3 =  1.421413741;
+    float a4 = -1.453152027;
+    float a5 =  1.061405429;
+    float p  =  0.3275911;
+
+    // Save the sign of x
+    int sign = 1;
+    if (x < 0)
+        sign = -1;
+    x = fabs(x)/sqrt(2.0);
+
+    // A&S formula 7.1.26
+    float t = 1.0/(1.0 + p*x);
+    float y = 1.0 - (((((a5*t + a4)*t) + a3)*t + a2)*t + a1)*t*exp(-x*x);
+
+    return 0.5*(1.0 + sign*y);
+}
+
+void CMT::prob_gen_loop()
+{
+    float in_float[3];
+    float out_float[3];
+    float prob[3];
+    Vec3f in_mean_vec = in_mean.at<Vec3f>(1,1);
+    Vec3f in_std_vec = in_std.at<Vec3f>(1,1);
+    Vec3f out_mean_vec = out_mean.at<Vec3f>(1,1);
+    Vec3f out_std_vec = out_std.at<Vec3f>(1,1);
+
+    for (int i = 0; i < 256; i++) {
+        for (int j = 0; j < 256; j++) {
+            for (int k = 0; k < 256; k++) {
+                in_float[0] = (((float)i - in_mean_vec[0])/in_std_vec[0]);
+                in_float[1] = (((float)j - in_mean_vec[1])/in_std_vec[1]);
+                in_float[2] = (((float)k - in_mean_vec[2])/in_std_vec[2]);
+                out_float[0] = (((float)i - out_mean_vec[0])/out_std_vec[0]);
+                out_float[1] = (((float)j - out_mean_vec[1])/out_std_vec[1]);
+                out_float[2] = (((float)k - out_mean_vec[2])/out_std_vec[2]);
+                for (int l = 0; l < 3; l++ ) {
+                    prob[l] = prob_normcdf(in_float[l] / out_float[l]);
+                }
+                prob_table[i][j][k] = prob[0] * prob[1] * prob[2];
+            }
+        }
+    }
+    cvNamedWindow("BLAH");
+}
+
+
+
+
 Mat pred_create_mask(const cv::Mat image, const cv::Rect bb, int inv = 0)
 {
     cv::Mat mask(image.rows, image.cols, CV_8UC1);
@@ -80,7 +130,7 @@ Mat pred_create_mask(const cv::Mat image, const cv::Rect bb, int inv = 0)
     return mask;
 }
 
-void pred_train(const Mat img, const Rect bb)
+void CMT::pred_train(const Mat img, const Rect bb)
 {
     Mat in_mask = pred_create_mask(img, bb, 0);
     Mat out_mask = pred_create_mask(img, bb, 1);
@@ -114,26 +164,24 @@ void pred_train(const Mat img, const Rect bb)
     tmp1.setTo(out_mean_arr[1]);
     tmp2.setTo(out_mean_arr[2]);
     merge({tmp0, tmp1, tmp2}, out_std);
+
+    /* Generate the new probablity matrix */
+    prob_gen_loop();
 }
 
-Mat pred(const Mat img)
+Mat CMT::pred(const Mat img)
 {
-    Mat in_sub, in_prob, out_sub, out_prob,
-        prob_mat_3(img.rows, img.cols, CV_32FC3),
-        prob_mat(img.rows, img.cols, CV_32FC1);
-    subtract(img, in_mean, in_sub, Mat(), CV_32FC3);
-    subtract(img, out_mean, out_sub, Mat(),CV_32FC3);
-    divide(in_sub, in_std, in_prob);
-    divide(out_sub, out_std, out_prob);
-    divide(in_prob , out_prob, prob_mat_3);
-
-    /* Convert z-score to probablities */
-    prob_mat_3 = pred_normcdf(prob_mat_3);
-    //printf("prob_mat size: %d, %d\n", prob_mat.rows, prob_mat.cols);
-    cv::Mat m[3] = {Mat(), Mat(), Mat()};
-    cv::split(prob_mat_3, m);
-    prob_mat = (m[0].mul(m[1])).mul(m[2]);
-    return prob_mat;
+    cv::Mat prob = cv::Mat(img.size(), CV_32FC1);
+    #pragma omp parallel for
+    for(size_t i = 0; i < img.rows; ++i) {
+        for(size_t j = 0; j < img.cols; ++j) {
+            Vec3b c = img.at<Vec3b>(i,j);
+            prob.at<float>(i,j) = prob_table[c[0]][c[1]][c[2]];
+        }
+    }
+    imshow("BLAH", prob);
+    waitKey(30);
+    return prob;
 }
 
 void get_N_hottest_keypoints(
