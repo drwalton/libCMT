@@ -30,27 +30,31 @@ static Mat in_std;
 static Mat out_mean;
 static Mat out_std;
 
-double pred_normcdf(double x)
+Mat pred_normcdf(Mat x)
 {
     // constants
-    double a1 =  0.254829592;
-    double a2 = -0.284496736;
-    double a3 =  1.421413741;
-    double a4 = -1.453152027;
-    double a5 =  1.061405429;
-    double p  =  0.3275911;
+    float a1 =  0.254829592;
+    float a2 = -0.284496736;
+    float a3 =  1.421413741;
+    float a4 = -1.453152027;
+    float a5 =  1.061405429;
+    float p  =  0.3275911;
 
     // Save the sign of x
-    int sign = 1;
-    if (x < 0)
-        sign = -1;
-    x = fabs(x)/sqrt(2.0);
+    Mat sign = x < 0.f;
+    sign.convertTo(sign, CV_32FC1);
+    x = abs(x)/sqrt(2.0f);
 
     // A&S formula 7.1.26
-    double t = 1.0/(1.0 + p*x);
-    double y = 1.0 - (((((a5*t + a4)*t) + a3)*t + a2)*t + a1)*t*exp(-x*x);
+    Mat t;
+    cv::divide(1.0f, 1.0f + p*x, t);
 
-    return 0.5*(1.0 + sign*y);
+
+    Mat y = 1.0 - (((((a5*t + a4).mul(t)) + a3).mul(t) + a2).mul(t) + a1).mul(t);
+    Mat expx2; cv::exp(-x.mul(x), expx2);
+    y = y.mul(expx2);
+
+    return 0.5f*(1.0f + sign.mul(y));
 }
 
 Mat pred_create_mask(const cv::Mat image, const cv::Rect bb, int inv = 0)
@@ -124,19 +128,13 @@ Mat pred(const Mat img)
     divide(in_prob , out_prob, prob_mat_3);
 
     /* Convert z-score to probablities */
-    for (int i = 0; i < img.rows; i++) {
-        for (int j = 0; j < img.cols; j++) {
-            for (int k = 0; k < 3; k++) {
-                prob_mat_3.at<cv::Vec3f>(i, j)[k] =
-                    (float)pred_normcdf(prob_mat_3.at<cv::Vec3f>(i, j)[k]);
-            }
-            prob_mat.at<float>(i, j) = prob_mat_3.at<Vec3f>(i, j)[0] *
-            prob_mat_3.at<Vec3f>(i, j)[1] * prob_mat_3.at<Vec3f>(i, j)[2];
-        }
-    }
-    printf("prob_mat size: %d, %d\n", prob_mat.rows, prob_mat.cols);
+    prob_mat_3 = pred_normcdf(prob_mat_3);
+    //printf("prob_mat size: %d, %d\n", prob_mat.rows, prob_mat.cols);
+    cv::Mat m[3] = {Mat(), Mat(), Mat()};
+    cv::split(prob_mat_3, m);
+    prob_mat = (m[0].mul(m[1])).mul(m[2]);
     imshow("BLAH", prob_mat);
-    std::cout << prob_mat.size() << endl;
+    //std::cout << prob_mat.size() << endl;
     waitKey(30);
     return prob_mat;
 }
@@ -248,9 +246,9 @@ cv::Point2f rotate(cv::Point2f p, float rad)
 }
 
 CMT::CMT()
-    :maxTrackedKeypoints(500),
-    maxObjectKeypoints(500),
-    maxBackgroundKeypoints(500)
+    :maxTrackedKeypoints(300),
+    maxObjectKeypoints(300),
+    maxBackgroundKeypoints(300)
 {
     detectorType = "Feature2D.BRISK";
     descriptorType = "Feature2D.BRISK";
