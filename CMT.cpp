@@ -2,6 +2,8 @@
 #include <stdio.h>
 #define _USE_MATH_DEFINES
 #include <cmath>
+#include <stdexcept>
+
 
 #if __cplusplus < 201103L //test if c++11
 
@@ -20,6 +22,124 @@
     #endif
 
 #endif
+using namespace cv;
+using namespace std;
+
+static Mat in_mean;
+static Mat in_std;
+static Mat out_mean;
+static Mat out_std;
+
+double pred_normcdf(double x)
+{
+    // constants
+    double a1 =  0.254829592;
+    double a2 = -0.284496736;
+    double a3 =  1.421413741;
+    double a4 = -1.453152027;
+    double a5 =  1.061405429;
+    double p  =  0.3275911;
+
+    // Save the sign of x
+    int sign = 1;
+    if (x < 0)
+        sign = -1;
+    x = fabs(x)/sqrt(2.0);
+
+    // A&S formula 7.1.26
+    double t = 1.0/(1.0 + p*x);
+    double y = 1.0 - (((((a5*t + a4)*t) + a3)*t + a2)*t + a1)*t*exp(-x*x);
+
+    return 0.5*(1.0 + sign*y);
+}
+
+Mat pred_create_mask(const cv::Mat image, const cv::Rect bb, int inv = 0)
+{
+    cv::Mat mask(image.rows, image.cols, CV_8UC1);
+    if(bb.height < 1 || bb.width < 1 || bb.x < 1 || bb.y < 1) {
+        throw runtime_error("Invalid bounding box!");
+        //BB is invalid - use whole image.
+        if (inv == 0) {
+            mask.setTo(1);
+        } else {
+            mask.setTo(0);
+        }
+    } else {
+        if (inv == 1) {
+            mask.setTo(0);
+            mask(bb).setTo(1);
+        } else {
+            mask.setTo(1);
+            mask(bb).setTo(0);
+        }
+    }
+    return mask;
+}
+
+void pred_train(const Mat img, const Rect bb)
+{
+    Mat in_mask = pred_create_mask(img, bb, 0);
+    Mat out_mask = pred_create_mask(img, bb, 1);
+    cv::Scalar in_mean_arr, out_mean_arr, in_std_arr, out_std_arr;
+    Mat tmp0(img.rows, img.cols, CV_32FC1), tmp1(img.rows, img.cols, CV_32FC1),
+    tmp2(img.rows, img.cols, CV_32FC1);
+
+    cv::meanStdDev(img, in_mean_arr, in_std_arr, in_mask);
+    cv::meanStdDev(img, out_mean_arr, out_std_arr, out_mask);
+
+    /* mean for the inner sum image */
+    tmp0.setTo(in_mean_arr[0]);
+    tmp1.setTo(in_mean_arr[1]);
+    tmp2.setTo(in_mean_arr[2]);
+    merge({tmp0, tmp1, tmp2}, in_mean);
+
+    /* mean for the outer sum image */
+    tmp0.setTo(out_mean_arr[0]);
+    tmp1.setTo(out_mean_arr[1]);
+    tmp2.setTo(out_mean_arr[2]);
+    merge({tmp0, tmp1, tmp2}, out_mean);
+
+    /* standard deviation for the inner sub image */
+    tmp0.setTo(in_std_arr[0]);
+    tmp1.setTo(in_std_arr[1]);
+    tmp2.setTo(in_std_arr[2]);
+    merge({tmp0, tmp1, tmp2}, in_std);
+
+    /* standard deviation for the outer image */
+    tmp0.setTo(out_mean_arr[0]);
+    tmp1.setTo(out_mean_arr[1]);
+    tmp2.setTo(out_mean_arr[2]);
+    merge({tmp0, tmp1, tmp2}, out_std);
+}
+
+Mat pred(const Mat img)
+{
+    Mat in_sub, in_prob, out_sub, out_prob,
+        prob_mat_3(img.rows, img.cols, CV_32FC3),
+        prob_mat(img.rows, img.cols, CV_32FC1);
+    subtract(img, in_mean, in_sub, Mat(), CV_32FC3);
+    subtract(img, out_mean, out_sub, Mat(),CV_32FC3);
+    divide(in_sub, in_std, in_prob);
+    divide(out_sub, out_std, out_prob);
+    divide(in_prob , out_prob, prob_mat_3);
+
+    /* Convert z-score to probablities */
+    for (int i = 0; i < img.rows; i++) {
+        for (int j = 0; j < img.cols; j++) {
+            for (int k = 0; k < 3; k++) {
+                prob_mat_3.at<cv::Vec3f>(i, j)[k] =
+                    (float)pred_normcdf(prob_mat_3.at<cv::Vec3f>(i, j)[k]);
+            }
+            prob_mat.at<float>(i, j) = prob_mat_3.at<Vec3f>(i, j)[0] *
+            prob_mat_3.at<Vec3f>(i, j)[1] * prob_mat_3.at<Vec3f>(i, j)[2];
+        }
+    }
+    printf("prob_mat size: %d, %d\n", prob_mat.rows, prob_mat.cols);
+    imshow("BLAH", prob_mat);
+    std::cout << prob_mat.size() << endl;
+    waitKey(30);
+    return prob_mat;
+}
 
 void shuffle_keypoints(std::vector<cv::KeyPoint> & vec) {
     std::shuffle(vec.begin(), vec.end(),
@@ -144,8 +264,12 @@ CMT::CMT()
     nbInitialKeypoints = 0;
 }
 
-void CMT::initialise(cv::Mat im0, cv::Point2f topleft, cv::Point2f bottomright)
+void CMT::initialise(cv::Mat im0, cv::Rect target_bb)
 {
+    cvNamedWindow("BLAH");
+    cv::Point2f topleft = target_bb.tl();
+    cv::Point2f bottomright = target_bb.br();
+
     cv::Mat im_gray0;
     cv::cvtColor(im0, im_gray0, CV_BGR2GRAY);
 
@@ -165,8 +289,8 @@ void CMT::initialise(cv::Mat im0, cv::Point2f topleft, cv::Point2f bottomright)
     std::vector<cv::KeyPoint> background_keypoints;
     inout_rect(keypoints, topleft, bottomright, selected_keypoints, background_keypoints);
 
-    cv::Mat heat_map = cv::Mat::zeros(im0.rows, im0.cols, CV_32FC1);
-    //TODO GENERATE HEAT MAP.
+    pred_train(im0, target_bb);
+    cv::Mat heat_map = pred(im0);
 
     get_N_hottest_keypoints(selected_keypoints, maxObjectKeypoints, heat_map);
     get_N_coolest_keypoints(background_keypoints, maxBackgroundKeypoints, heat_map);
@@ -569,8 +693,7 @@ void CMT::processFrame(cv::Mat im)
     detector->detect(im_gray, keypoints);
     descriptorExtractor->compute(im_gray, keypoints, features);
 
-    cv::Mat heat_map = cv::Mat::zeros(im.rows, im.cols, CV_32FC1);
-    //TODO GENERATE HEAT MAP
+    cv::Mat heat_map = pred(im);
 
     get_N_hottest_keypoints(keypoints, maxTrackedKeypoints, heat_map);
 

@@ -34,9 +34,10 @@ int main(int argc, char *argv[])
 
         if(frame < 10) {
             if(frame == 9)
-                cmt.initialise(im_gray,
-                               cv::Point2f(im_gray.cols / 4,im_gray.rows / 4),
-                               cv::Point2f(3 * (im_gray.cols / 4),3 * (im_gray.rows / 4)));
+                printf("THIS IS BROKEN");
+//                 cmt.initialise(im_gray,
+//                                cv::Point2f(im_gray.cols / 4,im_gray.rows / 4),
+//                                cv::Point2f(3 * (im_gray.cols / 4),3 * (im_gray.rows / 4)));
         } else {
             cmt.processFrame(im_gray);
             for(int i = 0; i<cmt.trackedKeypoints.size(); i++)
