@@ -30,11 +30,7 @@ static Mat in_std;
 static Mat out_mean;
 static Mat out_std;
 
-<<<<<<< HEAD
 Mat pred_normcdf(Mat x)
-=======
-inline float pred_normcdf(float x)
->>>>>>> 3d9599aadbb145af557d3a541a44dee1f8e373b3
 {
     // constants
     float a1 =  0.254829592;
@@ -50,13 +46,8 @@ inline float pred_normcdf(float x)
     x = abs(x)/sqrt(2.0f);
 
     // A&S formula 7.1.26
-<<<<<<< HEAD
     Mat t;
     cv::divide(1.0f, 1.0f + p*x, t);
-=======
-    float t = 1.0/(1.0 + p*x);
-    float y = 1.0 - (((((a5*t + a4)*t) + a3)*t + a2)*t + a1)*t*exp(-x*x);
->>>>>>> 3d9599aadbb145af557d3a541a44dee1f8e373b3
 
 
     Mat y = 1.0 - (((((a5*t + a4).mul(t)) + a3).mul(t) + a2).mul(t) + a1).mul(t);
