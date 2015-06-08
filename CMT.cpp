@@ -35,8 +35,8 @@ void get_N_hottest_keypoints(
 
     std::sort(keypoints.begin(), keypoints.end(),
         [&heat_map](const cv::KeyPoint &left, const cv::KeyPoint &right) {
-            return heat_map.at<float>(int(left.pt.x), int(left.pt.y)) >
-                    heat_map.at<float>(int(right.pt.x), int(right.pt.y));
+            return heat_map.at<float>(int(left.pt.y), int(left.pt.x)) >
+                    heat_map.at<float>(int(right.pt.y), int(right.pt.x));
     });
 
     keypoints.erase(keypoints.begin() + N, keypoints.end());
@@ -51,8 +51,8 @@ void get_N_coolest_keypoints(
 
     std::sort(keypoints.begin(), keypoints.end(),
         [&heat_map](const cv::KeyPoint &left, const cv::KeyPoint &right) {
-            return heat_map.at<float>(int(left.pt.x), int(left.pt.y)) <
-                    heat_map.at<float>(int(right.pt.x), int(right.pt.y));
+            return heat_map.at<float>(int(left.pt.y), int(left.pt.x)) <
+                    heat_map.at<float>(int(right.pt.y), int(right.pt.x));
     });
 
     keypoints.erase(keypoints.begin() + N, keypoints.end());
