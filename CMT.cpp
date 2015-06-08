@@ -133,9 +133,6 @@ Mat pred(const Mat img)
     cv::Mat m[3] = {Mat(), Mat(), Mat()};
     cv::split(prob_mat_3, m);
     prob_mat = (m[0].mul(m[1])).mul(m[2]);
-    //imshow("BLAH", prob_mat);
-    //std::cout << prob_mat.size() << endl;
-    //waitKey(30);
     return prob_mat;
 }
 
