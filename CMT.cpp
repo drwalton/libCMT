@@ -21,9 +21,41 @@
 
 #endif
 
-void sort_keypoints(std::vector<cv::KeyPoint> & vec) {
+void shuffle_keypoints(std::vector<cv::KeyPoint> & vec) {
     std::shuffle(vec.begin(), vec.end(),
                  std::default_random_engine(1));
+}
+
+void get_N_hottest_keypoints(
+        std::vector<cv::KeyPoint> &keypoints, size_t N, cv::Mat heat_map)
+{
+    if(keypoints.size() <= N) {
+        return;
+    }
+
+    std::sort(keypoints.begin(), keypoints.end(),
+        [&heat_map](const cv::KeyPoint &left, const cv::KeyPoint &right) {
+            return heat_map.at<float>(int(left.pt.x), int(left.pt.y)) >
+                    heat_map.at<float>(int(right.pt.x), int(right.pt.y));
+    });
+
+    keypoints.erase(keypoints.begin() + N, keypoints.end());
+}
+
+void get_N_coolest_keypoints(
+        std::vector<cv::KeyPoint> &keypoints, size_t N, cv::Mat heat_map)
+{
+    if(keypoints.size() <= N) {
+        return;
+    }
+
+    std::sort(keypoints.begin(), keypoints.end(),
+        [&heat_map](const cv::KeyPoint &left, const cv::KeyPoint &right) {
+            return heat_map.at<float>(int(left.pt.x), int(left.pt.y)) <
+                    heat_map.at<float>(int(right.pt.x), int(right.pt.y));
+    });
+
+    keypoints.erase(keypoints.begin() + N, keypoints.end());
 }
 
 void inout_rect(const std::vector<cv::KeyPoint>& keypoints, cv::Point2f topleft, cv::Point2f bottomright, std::vector<cv::KeyPoint>& in, std::vector<cv::KeyPoint>& out)
@@ -112,8 +144,10 @@ CMT::CMT()
     nbInitialKeypoints = 0;
 }
 
-void CMT::initialise(cv::Mat im_gray0, cv::Point2f topleft, cv::Point2f bottomright)
+void CMT::initialise(cv::Mat im0, cv::Point2f topleft, cv::Point2f bottomright)
 {
+    cv::Mat im_gray0;
+    cv::cvtColor(im0, im_gray0, CV_BGR2GRAY);
 
     //Initialise detector, descriptor, matcher
     detector = cv::Algorithm::create<cv::FeatureDetector>(detectorType.c_str());
@@ -131,19 +165,11 @@ void CMT::initialise(cv::Mat im_gray0, cv::Point2f topleft, cv::Point2f bottomri
     std::vector<cv::KeyPoint> background_keypoints;
     inout_rect(keypoints, topleft, bottomright, selected_keypoints, background_keypoints);
 
-    if(maxObjectKeypoints != 0 && selected_keypoints.size() > maxObjectKeypoints) {
-//         sort_keypoints(selected_keypoints);
-        selected_keypoints = std::vector<cv::KeyPoint>(
-                    selected_keypoints.begin(),
-                    selected_keypoints.begin() + maxObjectKeypoints);
-    }
+    cv::Mat heat_map = cv::Mat::zeros(im0.rows, im0.cols, CV_32FC1);
+    //TODO GENERATE HEAT MAP.
 
-    if(maxBackgroundKeypoints != 0 && background_keypoints.size() > maxBackgroundKeypoints) {
-//         sort_keypoints(background_keypoints);
-        background_keypoints = std::vector<cv::KeyPoint>(
-                    background_keypoints.begin(),
-                    background_keypoints.begin() + maxBackgroundKeypoints);
-    }
+    get_N_hottest_keypoints(selected_keypoints, maxObjectKeypoints, heat_map);
+    get_N_coolest_keypoints(background_keypoints, maxBackgroundKeypoints, heat_map);
 
     std::cout << "Initialising CMT Tracker: "
               << selected_keypoints.size() << " object keypoints, "
@@ -520,8 +546,11 @@ std::vector<bool> in1d(const std::vector<int>& a, const std::vector<int>& b)
     return result;
 }
 
-void CMT::processFrame(cv::Mat im_gray)
+void CMT::processFrame(cv::Mat im)
 {
+    cv::Mat im_gray;
+    cv::cvtColor(im, im_gray, CV_BGR2GRAY);
+
     trackedKeypoints = std::vector<std::pair<cv::KeyPoint, int> >();
     std::vector<unsigned char> status;
     track(im_prev, im_gray, activeKeypoints, trackedKeypoints, status);
@@ -540,11 +569,10 @@ void CMT::processFrame(cv::Mat im_gray)
     detector->detect(im_gray, keypoints);
     descriptorExtractor->compute(im_gray, keypoints, features);
 
-    if(maxTrackedKeypoints != 0 && keypoints.size() > maxTrackedKeypoints) {
-//         sort_keypoints(keypoints);
-        keypoints = std::vector<cv::KeyPoint>(
-                    keypoints.begin(), keypoints.begin() + maxTrackedKeypoints);
-    }
+    cv::Mat heat_map = cv::Mat::zeros(im.rows, im.cols, CV_32FC1);
+    //TODO GENERATE HEAT MAP
+
+    get_N_hottest_keypoints(keypoints, maxTrackedKeypoints, heat_map);
 
     //Create list of active keypoints
     activeKeypoints = std::vector<std::pair<cv::KeyPoint, int> >();
