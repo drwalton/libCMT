@@ -3,8 +3,8 @@
 
 #include <opencv2/opencv.hpp>
 #include <opencv2/features2d/features2d.hpp>
-
-
+#include "tracker/BayesPredictor.hpp"
+#include <memory>
 
 class CMT
 {
@@ -53,9 +53,10 @@ public:
     std::vector<std::pair<cv::KeyPoint,int> > trackedKeypoints;
 
     std::vector<cv::KeyPoint> hotKeypoints;
+    std::vector<cv::KeyPoint> bayesAcceptedKeypoints;
     std::vector<cv::KeyPoint> coolKeypoints;
-    void get_N_hottest_keypoints(
-            std::vector<cv::KeyPoint> &keypoints, size_t N, cv::Mat heat_map);
+    void get_N_best_keypoints(std::vector<cv::KeyPoint> &keypoints, size_t N, const cv::Mat image);
+
     void drawHotColdKeypoints(cv::Mat &im);
     float scale;
 
@@ -87,9 +88,7 @@ private:
     cv::Mat pred(const cv::Mat img);
     void prob_gen_loop();
 
-
-
-
+    std::unique_ptr<BayesPredictor> bayesPredictor;
 };
 
 class Cluster

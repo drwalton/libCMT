@@ -184,8 +184,8 @@ Mat CMT::pred(const Mat img)
     return prob;
 }
 
-void CMT::get_N_hottest_keypoints(
-        std::vector<cv::KeyPoint> &keypoints, size_t N, cv::Mat heat_map)
+void CMT::get_N_best_keypoints(
+        std::vector<cv::KeyPoint> &keypoints, size_t N, const cv::Mat image)
 {
     if(keypoints.size() <= N) {
         hotKeypoints = keypoints;
@@ -199,25 +199,36 @@ void CMT::get_N_hottest_keypoints(
     for(size_t i = 0 ; i < keypoints.size(); ++i) {
         kpts[i].first = keypoints[i];
         kpts[i].second =
-                heat_map.at<float>(
-                    int(keypoints[i].pt.y),
-                    int(keypoints[i].pt.x));
+                bayesPredictor->predict(image.at<Vec3b>(
+                                            int(keypoints[i].pt.y),
+                                            int(keypoints[i].pt.x)));
     }
 
     std::sort(kpts.begin(), kpts.end(),
-        [&heat_map](const std::pair<cv::KeyPoint, float> &left, const std::pair<cv::KeyPoint, float> &right) {
+        [](const std::pair<cv::KeyPoint, float> &left, const std::pair<cv::KeyPoint, float> &right) {
             return left.second > right.second;
     });
 
-    hotKeypoints.resize(N);
-    coolKeypoints.resize(kpts.size() - N);
+    size_t numObjectPts = 0;
+    for(; numObjectPts < kpts.size() && kpts[numObjectPts].second > 0.5f; ++numObjectPts) ;
 
+    if(numObjectPts < N) {
+        std::shuffle(kpts.begin() + numObjectPts, kpts.end(), std::default_random_engine(0));
+    } else if (N < numObjectPts) {
+        std::shuffle(kpts.begin(), kpts.begin() + numObjectPts, std::default_random_engine(0));
+    }
+
+    hotKeypoints.resize(N);
+    coolKeypoints.resize(max(int(kpts.size()) - int(numObjectPts), 0));
+    bayesAcceptedKeypoints.resize(max(int(numObjectPts) - int(N), 0));
     #pragma omp parallel for
     for(size_t i = 0; i < kpts.size(); ++i) {
         if(i < N) {
             hotKeypoints[i] = kpts[i].first;
+        } else if (i < numObjectPts) {
+            bayesAcceptedKeypoints[i - N] = kpts[i].first;
         } else {
-            coolKeypoints[i - N] = kpts[i].first;
+            coolKeypoints[i - numObjectPts] = kpts[i].first;
         }
     }
 
@@ -231,6 +242,9 @@ void CMT::drawHotColdKeypoints(Mat &im)
     }
     for(cv::KeyPoint k : coolKeypoints) {
         cv::rectangle(im, cv::Rect(k.pt.x/scale - 5, k.pt.y/scale - 5, 10, 10), cv::Scalar(255,0,0), 3);
+    }
+    for(cv::KeyPoint k : bayesAcceptedKeypoints) {
+        cv::rectangle(im, cv::Rect(k.pt.x/scale - 5, k.pt.y/scale - 5, 10, 10), cv::Scalar(255,0,255), 3);
     }
 }
 
@@ -338,7 +352,8 @@ cv::Point2f rotate(cv::Point2f p, float rad)
 CMT::CMT()
     :maxTrackedKeypoints(300),
     maxObjectKeypoints(300),
-    maxBackgroundKeypoints(300)
+    maxBackgroundKeypoints(300),
+    bayesPredictor(new BayesPredictor())
 {
     detectorType = "Feature2D.BRISK";
     descriptorType = "Feature2D.BRISK";
@@ -377,11 +392,15 @@ void CMT::initialise(cv::Mat im0, cv::Rect target_bb)
     std::vector<cv::KeyPoint> background_keypoints;
     inout_rect(keypoints, topleft, bottomright, selected_keypoints, background_keypoints);
 
-    pred_train(im0, target_bb);
-    cv::Mat heat_map = pred(im0);
+    if(selected_keypoints.size() < 8) {
+        nbInitialKeypoints = 0;
+        return;
+    }
 
-    get_N_hottest_keypoints(selected_keypoints, maxObjectKeypoints, heat_map);
-    get_N_coolest_keypoints(background_keypoints, maxBackgroundKeypoints, heat_map);
+    bayesPredictor->train(im0, target_bb);
+
+    get_N_best_keypoints(selected_keypoints, maxObjectKeypoints, im0);
+    get_N_best_keypoints(background_keypoints, maxBackgroundKeypoints, im0);
 
     std::cout << "Initialising CMT Tracker: "
               << selected_keypoints.size() << " object keypoints, "
@@ -781,9 +800,7 @@ void CMT::processFrame(cv::Mat im)
     detector->detect(im_gray, keypoints);
     descriptorExtractor->compute(im_gray, keypoints, features);
 
-    cv::Mat heat_map = pred(im);
-
-    get_N_hottest_keypoints(keypoints, maxTrackedKeypoints, heat_map);
+    get_N_best_keypoints(keypoints, maxTrackedKeypoints, im);
 
     //Create list of active keypoints
     activeKeypoints = std::vector<std::pair<cv::KeyPoint, int> >();
