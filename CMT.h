@@ -52,6 +52,13 @@ public:
     std::vector<std::pair<cv::KeyPoint,int> > activeKeypoints;
     std::vector<std::pair<cv::KeyPoint,int> > trackedKeypoints;
 
+    std::vector<cv::KeyPoint> hotKeypoints;
+    std::vector<cv::KeyPoint> coolKeypoints;
+    void get_N_hottest_keypoints(
+            std::vector<cv::KeyPoint> &keypoints, size_t N, cv::Mat heat_map);
+    void drawHotColdKeypoints(cv::Mat &im);
+    float scale;
+
     unsigned int nbInitialKeypoints;
 
     std::vector<cv::Point2f> votes;

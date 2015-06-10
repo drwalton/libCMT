@@ -184,10 +184,12 @@ Mat CMT::pred(const Mat img)
     return prob;
 }
 
-void get_N_hottest_keypoints(
+void CMT::get_N_hottest_keypoints(
         std::vector<cv::KeyPoint> &keypoints, size_t N, cv::Mat heat_map)
 {
     if(keypoints.size() <= N) {
+        hotKeypoints = keypoints;
+        coolKeypoints.clear();
         return;
     }
 
@@ -207,12 +209,28 @@ void get_N_hottest_keypoints(
             return left.second > right.second;
     });
 
-    keypoints.erase(keypoints.begin() + N, keypoints.end());
+    hotKeypoints.resize(N);
+    coolKeypoints.resize(kpts.size() - N);
 
-#pragma omp parallel for
-    for(size_t i = 0; i < N; ++i)
-    {
-        keypoints[i] = kpts[i].first;
+    #pragma omp parallel for
+    for(size_t i = 0; i < kpts.size(); ++i) {
+        if(i < N) {
+            hotKeypoints[i] = kpts[i].first;
+        } else {
+            coolKeypoints[i - N] = kpts[i].first;
+        }
+    }
+
+    keypoints = hotKeypoints;
+}
+
+void CMT::drawHotColdKeypoints(Mat &im)
+{
+    for(cv::KeyPoint k : hotKeypoints) {
+        cv::rectangle(im, cv::Rect(k.pt.x/scale - 5, k.pt.y/scale - 5, 10, 10), cv::Scalar(0,0,255), 3);
+    }
+    for(cv::KeyPoint k : coolKeypoints) {
+        cv::rectangle(im, cv::Rect(k.pt.x/scale - 5, k.pt.y/scale - 5, 10, 10), cv::Scalar(255,0,0), 3);
     }
 }
 
