@@ -81,7 +81,7 @@ void CMT::get_N_best_keypoints(
 void CMT::drawHotColdKeypoints(Mat &im)
 {
     for(cv::KeyPoint k : hotKeypoints) {
-        cv::rectangle(im, cv::Rect(k.pt.x/scale - 5, k.pt.y/scale - 5, 10, 10), cv::Scalar(0,0,255), 3);
+        //cv::rectangle(im, cv::Rect(k.pt.x/scale - 5, k.pt.y/scale - 5, 10, 10), cv::Scalar(0,0,255), 3);
     }
     for(cv::KeyPoint k : coolKeypoints) {
         cv::rectangle(im, cv::Rect(k.pt.x/scale - 5, k.pt.y/scale - 5, 10, 10), cv::Scalar(255,0,0), 3);
@@ -193,9 +193,9 @@ cv::Point2f rotate(cv::Point2f p, float rad)
 }
 
 CMT::CMT()
-    :maxTrackedKeypoints(1000),
-    maxObjectKeypoints(1000),
-    maxBackgroundKeypoints(1000),
+    :maxTrackedKeypoints(450),
+    maxObjectKeypoints(450),
+    maxBackgroundKeypoints(450),
     bayesPredictor(new BayesPredictor())
 {
     detectorType = "Feature2D.BRISK";
@@ -639,10 +639,11 @@ void CMT::processFrame(cv::Mat im)
 
     cv::Mat features;
     detector->detect(im_gray, keypoints);
-    descriptorExtractor->compute(im_gray, keypoints, features);
     numDetectedKeypoints = keypoints.size();
 
     get_N_best_keypoints(keypoints, maxTrackedKeypoints, im);
+
+    descriptorExtractor->compute(im_gray, keypoints, features);
 
     //Create list of active keypoints
     activeKeypoints = std::vector<std::pair<cv::KeyPoint, int> >();

@@ -62,6 +62,7 @@ public:
 
     unsigned int nbInitialKeypoints;
     unsigned int numDetectedKeypoints;
+    unsigned int numObjectKeypoints;
 
     std::vector<cv::Point2f> votes;
 
