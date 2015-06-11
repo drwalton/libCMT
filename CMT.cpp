@@ -421,12 +421,10 @@ void CMT::initialise(cv::Mat im0, cv::Rect target_bb)
     descriptorExtractor->compute(im_gray0, background_keypoints, background_features);
 
     //Assign each keypoint a class starting from 1, background is 0
-    selectedClasses = std::vector<int>();
+    selectedClasses = std::vector<int>(selected_keypoints.size());
     for(unsigned int i = 1; i <= selected_keypoints.size(); i++)
-        selectedClasses.push_back(i);
-    std::vector<int> backgroundClasses;
-    for(unsigned int i = 0; i < background_keypoints.size(); i++)
-        backgroundClasses.push_back(0);
+        selectedClasses[i-1] = i;
+    std::vector<int> backgroundClasses(background_keypoints.size(), 0);
 
     //Stack background features and selected features into database
     featuresDatabase = cv::Mat(background_features.rows+selectedFeatures.rows, std::max(background_features.cols,selectedFeatures.cols), background_features.type());
@@ -800,6 +798,7 @@ void CMT::processFrame(cv::Mat im)
     cv::Mat features;
     detector->detect(im_gray, keypoints);
     descriptorExtractor->compute(im_gray, keypoints, features);
+    numDetectedKeypoints = keypoints.size();
 
     get_N_best_keypoints(keypoints, maxTrackedKeypoints, im);
 

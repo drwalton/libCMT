@@ -61,6 +61,7 @@ public:
     float scale;
 
     unsigned int nbInitialKeypoints;
+    unsigned int numDetectedKeypoints;
 
     std::vector<cv::Point2f> votes;
 
