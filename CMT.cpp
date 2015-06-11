@@ -61,7 +61,8 @@ void CMT::get_N_best_keypoints(
     }
 
     hotKeypoints.resize(N);
-    coolKeypoints.resize(max(int(kpts.size()) - int(numObjectPts), 0));
+    coolKeypoints.resize(max(min(int(kpts.size()) - int(numObjectPts),
+                                 int(kpts.size()) - int(N)), 0));
     bayesAcceptedKeypoints.resize(max(int(numObjectPts) - int(N), 0));
     #pragma omp parallel for
     for(size_t i = 0; i < kpts.size(); ++i) {
@@ -70,7 +71,7 @@ void CMT::get_N_best_keypoints(
         } else if (i < numObjectPts) {
             bayesAcceptedKeypoints[i - N] = kpts[i].first;
         } else {
-            coolKeypoints[i - numObjectPts] = kpts[i].first;
+            coolKeypoints[i - min(numObjectPts,N)] = kpts[i].first;
         }
     }
 
@@ -192,9 +193,9 @@ cv::Point2f rotate(cv::Point2f p, float rad)
 }
 
 CMT::CMT()
-    :maxTrackedKeypoints(500),
-    maxObjectKeypoints(500),
-    maxBackgroundKeypoints(500),
+    :maxTrackedKeypoints(1000),
+    maxObjectKeypoints(1000),
+    maxBackgroundKeypoints(1000),
     bayesPredictor(new BayesPredictor())
 {
     detectorType = "Feature2D.BRISK";
