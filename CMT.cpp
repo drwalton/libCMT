@@ -205,9 +205,9 @@ cv::Point2f rotate(cv::Point2f p, float rad)
 }
 
 CMT::CMT()
-    :maxTrackedKeypoints(450),
-    maxObjectKeypoints(450),
-    maxBackgroundKeypoints(450),
+    :maxTrackedKeypoints(300),
+    maxObjectKeypoints(300),
+    maxBackgroundKeypoints(300),
     bayesPredictor(new BayesPredictor())
 {
     detectorType = "Feature2D.BRISK";
