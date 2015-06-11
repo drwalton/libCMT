@@ -60,19 +60,17 @@ void CMT::get_N_best_keypoints(
         std::shuffle(kpts.begin(), kpts.begin() + numObjectPts, std::default_random_engine(0));
     }
 
-    hotKeypoints.resize(N);
-    coolKeypoints.resize(max(min(int(kpts.size()) - int(numObjectPts),
-                                 int(kpts.size()) - int(N)), 0));
-    bayesAcceptedKeypoints.resize(max(int(numObjectPts) - int(N), 0));
-    #pragma omp parallel for
-    for(size_t i = 0; i < kpts.size(); ++i) {
-        if(i < N) {
-            hotKeypoints[i] = kpts[i].first;
-        } else if (i < numObjectPts) {
-            bayesAcceptedKeypoints[i - N] = kpts[i].first;
-        } else {
-            coolKeypoints[i - min(numObjectPts,N)] = kpts[i].first;
-        }
+    hotKeypoints.clear(); coolKeypoints.clear(); bayesAcceptedKeypoints.clear();
+
+    size_t i = 0;
+    for(; i < N; ++i) {
+        hotKeypoints.push_back(kpts[i].first);
+    }
+    for(; i < numObjectPts; ++i) {
+        bayesAcceptedKeypoints.push_back(kpts[i].first);
+    }
+    for(; i < kpts.size(); ++i) {
+        coolKeypoints.push_back(kpts[i].first);
     }
 
     keypoints = hotKeypoints;
@@ -81,7 +79,7 @@ void CMT::get_N_best_keypoints(
 void CMT::drawHotColdKeypoints(Mat &im)
 {
     for(cv::KeyPoint k : hotKeypoints) {
-        //cv::rectangle(im, cv::Rect(k.pt.x/scale - 5, k.pt.y/scale - 5, 10, 10), cv::Scalar(0,0,255), 3);
+        cv::rectangle(im, cv::Rect(k.pt.x/scale - 5, k.pt.y/scale - 5, 10, 10), cv::Scalar(0,0,255), 3);
     }
     for(cv::KeyPoint k : coolKeypoints) {
         cv::rectangle(im, cv::Rect(k.pt.x/scale - 5, k.pt.y/scale - 5, 10, 10), cv::Scalar(255,0,0), 3);
