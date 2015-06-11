@@ -400,7 +400,8 @@ void CMT::initialise(cv::Mat im0, cv::Rect target_bb)
     bayesPredictor->train(im0, target_bb);
 
     get_N_best_keypoints(selected_keypoints, maxObjectKeypoints, im0);
-    get_N_best_keypoints(background_keypoints, maxBackgroundKeypoints, im0);
+    std::shuffle(background_keypoints.begin(), background_keypoints.end(), std::default_random_engine(0));
+    background_keypoints.erase(background_keypoints.begin() + maxBackgroundKeypoints, background_keypoints.end());
 
     std::cout << "Initialising CMT Tracker: "
               << selected_keypoints.size() << " object keypoints, "
