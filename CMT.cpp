@@ -31,12 +31,13 @@ void CMT::get_N_best_keypoints(
     if(keypoints.size() <= N) {
         hotKeypoints = keypoints;
         coolKeypoints.clear();
+        bayesAcceptedKeypoints.clear();
         return;
     }
 
     std::vector<std::pair<cv::KeyPoint, float> > kpts(keypoints.size());
 
-#pragma omp parallel for
+    #pragma omp parallel for
     for(size_t i = 0 ; i < keypoints.size(); ++i) {
         kpts[i].first = keypoints[i];
         kpts[i].second =
@@ -241,8 +242,7 @@ void CMT::initialise(cv::Mat im0, cv::Rect target_bb)
     bayesPredictor->train(im0, target_bb);
 
     get_N_best_keypoints(selected_keypoints, maxObjectKeypoints, im0);
-    std::shuffle(background_keypoints.begin(), background_keypoints.end(), std::default_random_engine(0));
-    background_keypoints.erase(background_keypoints.begin() + maxBackgroundKeypoints, background_keypoints.end());
+    get_N_best_keypoints(background_keypoints, maxBackgroundKeypoints, im0);
 
     std::cout << "Initialising CMT Tracker: "
               << selected_keypoints.size() << " object keypoints, "
