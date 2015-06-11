@@ -54,6 +54,7 @@ public:
 
     std::vector<cv::KeyPoint> hotKeypoints;
     std::vector<cv::KeyPoint> bayesAcceptedKeypoints;
+    std::vector<cv::KeyPoint> bayesRejectedKeypoints;
     std::vector<cv::KeyPoint> coolKeypoints;
     void get_N_best_keypoints(std::vector<cv::KeyPoint> &keypoints, size_t N, const cv::Mat image);
 

@@ -32,6 +32,7 @@ void CMT::get_N_best_keypoints(
         hotKeypoints = keypoints;
         coolKeypoints.clear();
         bayesAcceptedKeypoints.clear();
+        bayesRejectedKeypoints.clear();
         return;
     }
 
@@ -73,7 +74,17 @@ void CMT::get_N_best_keypoints(
         coolKeypoints.push_back(kpts[i].first);
     }
 
+    bayesRejectedKeypoints.clear();
+
+    for(size_t i = numObjectPts; i < N; ++i) {
+        bayesRejectedKeypoints.push_back(kpts[i].first);
+    }
+
     keypoints = hotKeypoints;
+
+    if(numObjectPts < N) {
+        hotKeypoints.erase(hotKeypoints.begin() + numObjectPts, hotKeypoints.end());
+    }
 }
 
 void CMT::drawHotColdKeypoints(Mat &im)
@@ -86,6 +97,9 @@ void CMT::drawHotColdKeypoints(Mat &im)
     }
     for(cv::KeyPoint k : bayesAcceptedKeypoints) {
         cv::rectangle(im, cv::Rect(k.pt.x/scale - 5, k.pt.y/scale - 5, 10, 10), cv::Scalar(255,0,255), 3);
+    }
+    for(cv::KeyPoint k : bayesRejectedKeypoints) {
+        cv::rectangle(im, cv::Rect(k.pt.x/scale - 5, k.pt.y/scale - 5, 10, 10), cv::Scalar(255,255,0), 3);
     }
 }
 
