@@ -70,7 +70,7 @@ public:
     std::vector<std::pair<cv::KeyPoint, int> > outliers;
 
     CMT();
-    void initialise(cv::Mat im0, cv::Rect target_bb);
+    void initialise(cv::Mat im0, cv::Rect target_bb, int load_prediction = 0);
     void estimate(const std::vector<std::pair<cv::KeyPoint, int> >& keypointsIN, cv::Point2f& center, float& scaleEstimate, float& medRot, std::vector<std::pair<cv::KeyPoint, int> >& keypoints);
     void processFrame(cv::Mat im);
 
@@ -78,19 +78,10 @@ public:
     size_t maxObjectKeypoints;
     size_t maxBackgroundKeypoints;
 
+    /* The lookup table */
+    float ***bayesLUT;
+
 private:
-    /* variables */
-    float prob_table[256][256][256];
-    cv::Mat in_mean;
-    cv::Mat in_std;
-    cv::Mat out_mean;
-    cv::Mat out_std;
-
-    /* functions */
-    void pred_train(const cv::Mat img, const cv::Rect bb);
-    cv::Mat pred(const cv::Mat img);
-    void prob_gen_loop();
-
     std::unique_ptr<BayesPredictor> bayesPredictor;
 };
 

@@ -220,9 +220,10 @@ CMT::CMT()
     estimateScale = true;
     estimateRotation = true;
     nbInitialKeypoints = 0;
+    bayesLUT = reinterpret_cast<float ***>(bayesPredictor->lut);
 }
 
-void CMT::initialise(cv::Mat im0, cv::Rect target_bb)
+void CMT::initialise(cv::Mat im0, cv::Rect target_bb, int load_prediction)
 {
 //     cvNamedWindow("BLAH");
     cv::Point2f topleft = target_bb.tl();
@@ -252,7 +253,9 @@ void CMT::initialise(cv::Mat im0, cv::Rect target_bb)
         return;
     }
 
-    bayesPredictor->train(im0, target_bb);
+    if (!load_prediction) {
+        bayesPredictor->train(im0, target_bb);
+    }
 
     get_N_best_keypoints(selected_keypoints, maxObjectKeypoints, im0);
     get_N_best_keypoints(background_keypoints, maxBackgroundKeypoints, im0);
